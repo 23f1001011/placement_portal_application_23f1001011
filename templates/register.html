@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Placement Portal{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card mt-5">
+                <div class="card-header text-center">
+                    <h4><i class="bi bi-person-plus-fill"></i> Register</h4>
+                </div>
+                <div class="card-body">
+                    <form id="registerForm" @submit.prevent="handleRegister">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" v-model="username" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" v-model="email" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" v-model="password" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="confirmPassword" class="form-label">Confirm Password</label>
+                                <input type="password" class="form-control" id="confirmPassword" v-model="confirmPassword" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Register As</label>
+                            <select class="form-select" id="role" v-model="role" required>
+                                <option value="" disabled>Select your role</option>
+                                <option value="student">Student</option>
+                                <option value="company">Company</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Student specific fields -->
+                        <div v-if="role === 'student'">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="fullName" class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" id="fullName" v-model="fullName">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="rollNumber" class="form-label">Roll Number</label>
+                                    <input type="text" class="form-control" id="rollNumber" v-model="rollNumber">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="branch" class="form-label">Branch</label>
+                                    <select class="form-select" id="branch" v-model="branch">
+                                        <option value="">Select Branch</option>
+                                        <option value="Computer Science">Computer Science</option>
+                                        <option value="Information Technology">Information Technology</option>
+                                        <option value="Electronics">Electronics</option>
+                                        <option value="Electrical">Electrical</option>
+                                        <option value="Mechanical">Mechanical</option>
+                                        <option value="Civil">Civil</option>
+                                        <option value="Chemical">Chemical</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="year" class="form-label">Year</label>
+                                    <select class="form-select" id="year" v-model="year">
+                                        <option value="">Select Year</option>
+                                        <option value="2024">2024</option>
+                                        <option value="2025">2025</option>
+                                        <option value="2026">2026</option>
+                                        <option value="2027">2027</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="cgpa" class="form-label">CGPA</label>
+                                    <input type="number" step="0.01" class="form-control" id="cgpa" v-model="cgpa" min="0" max="10">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Company specific fields -->
+                        <div v-if="role === 'company'">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="companyName" class="form-label">Company Name</label>
+                                    <input type="text" class="form-control" id="companyName" v-model="companyName">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="hrName" class="form-label">HR Contact Name</label>
+                                    <input type="text" class="form-control" id="hrName" v-model="hrName">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="hrContact" class="form-label">HR Contact Number</label>
+                                    <input type="text" class="form-control" id="hrContact" v-model="hrContact">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="website" class="form-label">Website</label>
+                                    <input type="url" class="form-control" id="website" v-model="website">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100" :disabled="loading">
+                            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                            Register
+                        </button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <p>Already have an account? <a href="/login">Login here</a></p>
+                    </div>
+                    <div v-if="error" class="alert alert-danger mt-3" role="alert">
+                        [[ error ]]
+                    </div>
+                    <div v-if="success" class="alert alert-success mt-3" role="alert">
+                        [[ success ]]
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const { createApp, ref } = Vue;
+
+createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+        const username = ref('');
+        const email = ref('');
+        const password = ref('');
+        const confirmPassword = ref('');
+        const role = ref('');
+        const fullName = ref('');
+        const rollNumber = ref('');
+        const branch = ref('');
+        const year = ref('');
+        const cgpa = ref('');
+        const companyName = ref('');
+        const hrName = ref('');
+        const hrContact = ref('');
+        const website = ref('');
+        const loading = ref(false);
+        const error = ref('');
+        const success = ref('');
+        
+        const handleRegister = async () => {
+            error.value = '';
+            success.value = '';
+            
+            if (password.value !== confirmPassword.value) {
+                error.value = 'Passwords do not match';
+                return;
+            }
+            
+            if (password.value.length < 8) {
+                error.value = 'Password must be at least 8 characters';
+                return;
+            }
+            
+            loading.value = true;
+            
+            try {
+                const data = {
+                    username: username.value,
+                    email: email.value,
+                    password: password.value,
+                    role: role.value
+                };
+                
+                if (role.value === 'student') {
+                    data.full_name = fullName.value;
+                    data.roll_number = rollNumber.value;
+                    data.branch = branch.value;
+                    data.year = parseInt(year.value);
+                    data.cgpa = parseFloat(cgpa.value);
+                } else if (role.value === 'company') {
+                    data.company_name = companyName.value;
+                    data.hr_name = hrName.value;
+                    data.hr_contact = hrContact.value;
+                    data.website = website.value;
+                }
+                
+const response = await axios.post('/auth/register', data);
+                
+                success.value = 'Registration successful! Please login.';
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 2000);
+            } catch (err) {
+                error.value = err.response?.data?.error || 'Registration failed. Please try again.';
+            } finally {
+                loading.value = false;
+            }
+        };
+        
+        return {
+            username,
+            email,
+            password,
+            confirmPassword,
+            role,
+            fullName,
+            rollNumber,
+            branch,
+            year,
+            cgpa,
+            companyName,
+            hrName,
+            hrContact,
+            website,
+            loading,
+            error,
+            success,
+            handleRegister
+        };
+    }
+}).mount('#app');
+</script>
+{% endblock %}
