@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Placement Portal{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card mt-5">
+                <div class="card-header text-center">
+                    <h4><i class="bi bi-person-circle"></i> Login</h4>
+                </div>
+                <div class="card-body">
+                    <div id="app">                        <form id="loginForm" @submit.prevent="handleLogin">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" v-model="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" v-model="password" required>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="rememberMe">
+                            <label class="form-check-label" for="rememberMe">Remember Me</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100" :disabled="loading">
+                            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+                            Login
+                        </button>
+                    </form>
+                    </div>
+                </div>
+                <div v-if="error" class="alert alert-danger mt-3" role="alert">
+                    [[ error ]]
+                </div>
+                <div class="text-center mt-3">
+                    <p>Don't have an account? <a href="/register">Register here</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const { createApp, ref } = Vue;
+
+createApp({
+    delimiters: ['[[', ']]'],
+    setup() {
+        const username = ref('');
+        const password = ref('');
+        const loading = ref(false);
+        const error = ref('');
+        
+        const handleLogin = async () => {
+            error.value = '';
+            loading.value = true;
+            
+            console.log('Login attempt started');
+            
+            try {
+                const response = await axios.post('/auth/login', {
+                    username: username.value,
+                    password: password.value
+                });
+                
+                console.log('Login response:', response.data);
+                
+                if (response.data.access_token) {
+                    localStorage.setItem('access_token', response.data.access_token);
+                    localStorage.setItem('refresh_token', response.data.refresh_token);
+                    localStorage.setItem('user_role', response.data.user.role);
+                    
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
+                    
+                    window.location.href = '/dashboard';
+                }
+            } catch (err) {
+                console.error('Login error:', err);
+                if (err.response) {
+                    error.value = err.response.data?.error || 'Login failed. Please try again.';
+                } else if (err.request) {
+                    error.value = 'Network error. Please check if the server is running.';
+                } else {
+                    error.value = 'An unexpected error occurred. Please try again.';
+                }
+            } finally {
+                loading.value = false;
+                console.log('Login attempt finished, loading reset');
+            }
+        };
+        
+        return {
+            username,
+            password,
+            loading,
+            error,
+            handleLogin
+        };
+    }
+}).mount('#app');
+</script>
+{% endblock %}
