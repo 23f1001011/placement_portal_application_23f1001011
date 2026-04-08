@@ -1,0 +1,1320 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Placement Portal{% endblock %}
+
+{% block content %}
+<div id="app" v-cloak>
+  <div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 sidebar">
+            <h5 class="mb-3"><i class="bi bi-speedometer2"></i> Dashboard</h5>
+            <hr>
+            <!-- Admin Menu -->
+            <div v-if="userRole === 'admin'">
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'overview'}" @click="currentView = 'overview'; loadDataForView()">
+                    <i class="bi bi-graph-up"></i> Overview
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'companies'}" @click="currentView = 'companies'; loadCompanies()">
+                    <i class="bi bi-building"></i> Companies
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'drives'}" @click="currentView = 'drives'; loadDrives()">
+                    <i class="bi bi-briefcase"></i> Placement Drives
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'students'}" @click="currentView = 'students'; loadStudents()">
+                    <i class="bi bi-people"></i> Students
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'applications'}" @click="currentView = 'applications'; loadApplications()">
+                    <i class="bi bi-file-earmark-text"></i> Applications
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'reports'}" @click="currentView = 'reports'; loadReports()">
+                    <i class="bi bi-bar-chart"></i> Reports
+                </a>
+            </div>
+            
+            <!-- Company menu -->
+            <div v-if="userRole === 'company'">
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'overview'}" @click="currentView = 'overview'; loadCompanyOverview()">
+                    <i class="bi bi-graph-up"></i> Overview
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'my-drives'}" @click="currentView = 'my-drives'; loadCompanyDrives()">
+                    <i class="bi bi-briefcase"></i> My Drives
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'applications'}" @click="currentView = 'applications'; loadCompanyApplications()">
+                    <i class="bi bi-file-earmark-text"></i> Applications
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'profile'}" @click="currentView = 'profile'; loadCompanyProfile()">
+                    <i class="bi bi-building"></i> Profile
+                </a>
+            </div>
+            
+            <!-- Student menu -->
+            <div v-if="userRole === 'student'">
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'overview'}" @click="currentView = 'overview'; loadStudentOverview()">
+                    <i class="bi bi-graph-up"></i> Overview
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'drives'}" @click="currentView = 'drives'; loadStudentDrives()">
+                    <i class="bi bi-briefcase"></i> Drives
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'my-applications'}" @click="currentView = 'my-applications'; loadStudentApplications()">
+                    <i class="bi bi-file-earmark-text"></i> My Applications
+                </a>
+                <a href="#" class="sidebar-link" :class="{active: currentView === 'profile'}" @click="currentView = 'profile'; loadStudentProfile()">
+                    <i class="bi bi-person"></i> Profile
+                </a>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-md-9 p-4">
+            <!-- Global Error Display -->
+            <div v-if="errorMessage" class="alert alert-danger" role="alert">
+                [[ errorMessage ]]
+                <button type="button" class="btn-close" @click="errorMessage = ''"></button>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div v-if="loading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading dashboard data...</p>
+            </div>
+            
+            <!-- Dashboard content sections -->
+            <div v-else>
+                <div v-if="userRole === 'admin'">
+                    <div v-show="currentView === 'overview'">
+                        <h3><i class="bi bi-graph-up"></i> Admin Dashboard</h3>
+                        <div class="row mb-4" v-if="Object.keys(overviewStats).length">
+                            <div class="col-md-3 mb-3">
+                                <div class="card stat-card bg-primary text-white">
+                                    <div class="card-body">
+                                        <div class="stat-number">[[ overviewStats.total_users || 0 ]]</div>
+                                        <div class="stat-label">Total Users</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card stat-card bg-success text-white">
+                                    <div class="card-body">
+                                        <div class="stat-number">[[ overviewStats.total_students || 0 ]]</div>
+                                        <div class="stat-label">Students</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card stat-card bg-info text-white">
+                                    <div class="card-body">
+                                        <div class="stat-number">[[ overviewStats.total_companies || 0 ]]</div>
+                                        <div class="stat-label">Companies</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card stat-card bg-warning text-white">
+                                    <div class="card-body">
+                                        <div class="stat-number">[[ overviewStats.pending_companies || 0 ]]</div>
+                                        <div class="stat-label">Pending Companies</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>User Statistics</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Total Drives: [[ overviewStats.total_drives || 0 ]]</p>
+                                        <p>Total Applications: [[ overviewStats.total_applications || 0 ]]</p>
+                                        <p>Active Users: [[ overviewStats.active_users || 0 ]]</p>
+                                        <p>Blacklisted Users: [[ overviewStats.blacklisted_users || 0 ]]</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>Pending Approvals</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Pending Companies: [[ overviewStats.pending_companies || 0 ]]</p>
+                                        <p>Pending Drives: [[ overviewStats.pending_drives || 0 ]]</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'companies'">
+                        <h3><i class="bi bi-building"></i> Companies</h3>
+                        <div v-if="companies.length" class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Company Name</th>
+                                        <th>Status</th>
+                                        <th>HR Contact</th>
+                                        <th>Industry</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="company in companies" :key="company.id">
+                                        <td>[[ company.company_name ]]</td>
+                                        <td><span class="badge" :class="'bg-' + (company.approval_status === 'approved' ? 'success' : 'warning')">[[ company.approval_status ]]</span></td>
+                                        <td>[[ company.hr_contact ]]</td>
+                                        <td>[[ company.industry ]]</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-success" v-if="company.approval_status !== 'approved'" @click="approveCompany(company.id)">Approve</button>
+                                            <button class="btn btn-sm btn-danger" @click="rejectCompany(company.id)">Reject</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="no-data">
+                            <i class="bi bi-building fs-1"></i>
+                            <h5>No Companies</h5>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'drives'">
+                        <h3><i class="bi bi-briefcase"></i> Placement Drives</h3>
+                        <div v-if="adminDrives.length" class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Job Title</th>
+                                        <th>Company</th>
+                                        <th>Status</th>
+                                        <th>Deadline</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="drive in adminDrives" :key="drive.id">
+                                        <td>[[ drive.job_title ]]</td>
+                                        <td>[[ drive.company_name ]]</td>
+                                        <td><span class="badge" :class="getStatusClass(drive.status)">[[ drive.status ]]</span></td>
+                                        <td>[[ new Date(drive.application_deadline).toLocaleDateString() ]]</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-success" v-if="drive.status !== 'approved'" @click="approveDrive(drive.id)">Approve</button>
+                                            <button class="btn btn-sm btn-danger" @click="rejectDrive(drive.id)">Reject</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="no-data">
+                            <i class="bi bi-briefcase fs-1"></i>
+                            <h5>No Drives</h5>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'students'">
+                        <h3><i class="bi bi-people"></i> Students</h3>
+                        <div v-if="students.length" class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Roll Number</th>
+                                        <th>Branch</th>
+                                        <th>CGPA</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="student in students" :key="student.id">
+                                        <td>[[ student.full_name ]]</td>
+                                        <td>[[ student.roll_number ]]</td>
+                                        <td>[[ student.branch ]]</td>
+                                        <td>[[ student.cgpa ]]</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-danger" @click="blacklistStudent(student.id)">Blacklist</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="no-data">
+                            <i class="bi bi-people fs-1"></i>
+                            <h5>No Students</h5>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'applications'">
+                        <h3><i class="bi bi-file-earmark-text"></i> Applications</h3>
+                        <div v-if="applications.length" class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Drive</th>
+                                        <th>Company</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="app in applications" :key="app.id">
+                                        <td>[[ app.student_name ]]</td>
+                                        <td>[[ app.drive_title ]]</td>
+                                        <td>[[ app.company_name ]]</td>
+                                        <td><span class="badge" :class="getStatusClass(app.status)">[[ app.status ]]</span></td>
+                                        <td>[[ new Date(app.application_date).toLocaleDateString() ]]</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="no-data">
+                            <i class="bi bi-file-earmark-text fs-1"></i>
+                            <h5>No Applications</h5>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'reports'">
+                        <h3><i class="bi bi-bar-chart"></i> Reports</h3>
+                        <div v-if="reports && Object.keys(reports).length" class="row">
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5>Total Users</h5>
+                                        <h3>[[ reports.total_users ]]</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5>Total Applications</h5>
+                                        <h3>[[ reports.total_applications ]]</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5>Total Drives</h5>
+                                        <h3>[[ reports.total_drives ]]</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Student Dashboard -->
+                <div v-else-if="userRole === 'student'">
+                    <div v-show="currentView === 'overview'">
+                        <h3><i class="bi bi-graph-up"></i> My Dashboard</h3>
+                        <div class="row mb-4" v-if="studentStats">
+                            <div class="col-md-3 mb-3">
+                                <div class="card stat-card bg-primary text-white">
+                                    <div class="card-body">
+                                        <div class="stat-number">[[ studentStats.statistics?.total_applications || 0 ]]</div>
+                                        <div class="stat-label">Applications</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card stat-card bg-info text-white">
+                                    <div class="card-body">
+                                        <div class="stat-number">[[ studentStats.statistics?.pending || 0 ]]</div>
+                                        <div class="stat-label">Pending</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card stat-card bg-success text-white">
+                                    <div class="card-body">
+                                        <div class="stat-number">[[ studentStats.statistics?.shortlisted || 0 ]]</div>
+                                        <div class="stat-label">Shortlisted</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card stat-card bg-warning text-white">
+                                    <div class="card-body">
+                                        <div class="stat-number">[[ studentStats.statistics?.selected || 0 ]]</div>
+                                        <div class="stat-label">Selected</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>Upcoming Deadlines</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div v-if="studentStats.upcoming_deadlines && studentStats.upcoming_deadlines.length">
+                                            <div v-for="deadline in studentStats.upcoming_deadlines.slice(0,3)" class="mb-3 p-3 border rounded">
+                                                <h6>[[ deadline?.job_title ]]</h6>
+                                                <p><strong>Company:</strong> [[ deadline?.company?.company_name ]]</p>
+                                                <p><small>Deadline: [[ new Date(deadline?.application_deadline).toLocaleDateString() ]]</small></p>
+                                            </div>
+                                        </div>
+                                        <div v-else class="text-center py-4">
+                                            <i class="bi bi-calendar-x fs-1 text-muted"></i>
+                                            <p class="text-muted">No upcoming deadlines</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <h5>[[ currentStudent?.full_name || 'Student' ]]</h5>
+                                        <p class="text-muted">[[ currentStudent?.roll_number ]]</p>
+                                        <p>[[ currentStudent?.branch ]] - [[ currentStudent?.year ]]</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'drives'">
+                        <h3><i class="bi bi-briefcase"></i> Available Drives</h3>
+                        <div v-if="studentDrives.length" class="row g-4">
+                            <div v-for="drive in studentDrives" class="col-md-6 col-lg-4" :key="drive.id">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h6 class="card-title">[[ drive.job_title ]]</h6>
+                                        <p class="small">[[ drive.company_name ]]</p>
+                                        <span class="badge bg-success">Open</span>
+                                        <div class="mt-2">
+                                            <small>Closes: [[ new Date(drive.application_deadline).toLocaleDateString() ]]</small>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <button v-if="!drive.has_applied" class="btn btn-primary btn-sm w-100" @click="applyForDrive(drive.id)">
+                                            Apply Now
+                                        </button>
+                                        <span v-else class="badge bg-info w-100 text-start d-block">Applied - [[ drive.application_status ]]</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="no-data">
+                            <i class="bi bi-briefcase fs-1"></i>
+                            <h5>No Drives Available</h5>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'my-applications'">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h3><i class="bi bi-file-earmark-text"></i> My Applications</h3>
+                            <div v-if="studentApplications.length" class="btn-group" role="group">
+                                <button class="btn btn-success" @click="exportApplicationsToCSV">
+                                    <i class="bi bi-download"></i> Download CSV
+                                </button>
+                                <button class="btn btn-info" @click="exportApplicationsViaCelery" :disabled="isExporting">
+                                    <i v-if="!isExporting" class="bi bi-envelope-check"></i>
+                                    <span v-if="isExporting" class="spinner-border spinner-border-sm me-2"></span>
+                                    Email to Me
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="studentApplications.length" class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Drive</th>
+                                        <th>Company</th>
+                                        <th>Status</th>
+                                        <th>Applied</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="app in studentApplications" :key="app.id">
+                                        <td>[[ app.drive_title ]]</td>
+                                        <td>[[ app.company_name ]]</td>
+                                        <td>
+                                            <span class="badge" :class="getStatusClass(app.status)">[[ app.status ]]</span>
+                                        </td>
+                                        <td>[[ new Date(app.application_date).toLocaleDateString() ]]</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="no-data">
+                            <i class="bi bi-file-earmark-text fs-1"></i>
+                            <h5>No Applications</h5>
+                            <p>Apply to some drives to see your applications here.</p>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'profile'">
+                        <h3><i class="bi bi-person"></i> Profile</h3>
+                        <div v-if="currentStudent" class="row">
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5>Student Information</h5>
+                                        <button v-if="!editMode" class="btn btn-primary btn-sm" @click="editMode = true; editedStudent = {...currentStudent}">
+                                            <i class="bi bi-pencil"></i> Edit Profile
+                                        </button>
+                                        <div v-else>
+                                            <button class="btn btn-success btn-sm me-2" @click="saveProfile">
+                                                <i class="bi bi-check"></i> Save
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" @click="editMode = false">
+                                                <i class="bi bi-x"></i> Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Display Mode -->
+                                        <div v-if="!editMode">
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Full Name</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.full_name ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Roll Number</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.roll_number ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Email</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.email ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Phone</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.phone || 'Not provided' ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Branch</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.branch ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Year</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.year ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">CGPA</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.cgpa ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Date of Birth</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.date_of_birth ? new Date(currentStudent.date_of_birth).toLocaleDateString() : 'Not provided' ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Gender</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.gender || 'Not specified' ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Address</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.address || 'Not provided' ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Skills</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.skills || 'Not specified' ]]</p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Resume</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">
+                                                        <a v-if="currentStudent.resume_url" :href="currentStudent.resume_url" target="_blank">View Resume</a>
+                                                        <span v-else>Not uploaded</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Status</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">
+                                                        <span class="badge" :class="currentStudent.is_blacklisted ? 'bg-danger' : 'bg-success'">
+                                                            [[ currentStudent.is_blacklisted ? 'Blacklisted' : 'Active' ]]
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Profile Created</label>
+                                                <div class="col-sm-8">
+                                                    <p class="form-control-plaintext">[[ currentStudent.created_at ? new Date(currentStudent.created_at).toLocaleDateString() : 'Unknown' ]]</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Edit Mode -->
+                                        <form v-else @submit.prevent="saveProfile">
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Full Name</label>
+                                                <div class="col-sm-8">
+                                                    <input type="text" class="form-control" v-model="editedStudent.full_name" required>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Phone</label>
+                                                <div class="col-sm-8">
+                                                    <input type="tel" class="form-control" v-model="editedStudent.phone">
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Branch</label>
+                                                <div class="col-sm-8">
+                                                    <input type="text" class="form-control" v-model="editedStudent.branch" required>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Year</label>
+                                                <div class="col-sm-8">
+                                                    <input type="number" class="form-control" v-model.number="editedStudent.year" required>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">CGPA</label>
+                                                <div class="col-sm-8">
+                                                    <input type="number" step="0.01" min="0" max="10" class="form-control" v-model.number="editedStudent.cgpa" required>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Date of Birth</label>
+                                                <div class="col-sm-8">
+                                                    <input type="date" class="form-control" v-model="editedStudent.date_of_birth">
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Gender</label>
+                                                <div class="col-sm-8">
+                                                    <select class="form-control" v-model="editedStudent.gender">
+                                                        <option value="">Not specified</option>
+                                                        <option value="Male">Male</option>
+                                                        <option value="Female">Female</option>
+                                                        <option value="Other">Other</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Address</label>
+                                                <div class="col-sm-8">
+                                                    <textarea class="form-control" v-model="editedStudent.address" rows="3"></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Skills</label>
+                                                <div class="col-sm-8">
+                                                    <input type="text" class="form-control" v-model="editedStudent.skills" placeholder="Comma-separated skills">
+                                                </div>
+                                            </div>
+                                            <div class="row mb-3">
+                                                <label class="col-sm-4 col-form-label">Resume URL</label>
+                                                <div class="col-sm-8">
+                                                    <input type="url" class="form-control" v-model="editedStudent.resume_url" placeholder="https://example.com/resume.pdf">
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <!-- Company Dashboard -->
+                <div v-else-if="userRole === 'company'">
+                    <div v-show="currentView === 'overview'">
+                        <h3><i class="bi bi-graph-up"></i> Dashboard</h3>
+                        <div class="row mb-4" v-if="companyOverview">
+                            <div class="col-md-3 mb-3">
+                                <div class="card stat-card bg-primary text-white">
+                                    <div class="card-body">
+                                        <div class="stat-number">[[ companyOverview.total_drives ]]</div>
+                                        <div class="stat-label">Total Drives</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="card stat-card bg-success text-white">
+                                    <div class="card-body">
+                                        <div class="stat-number">[[ companyOverview.approved_drives ]]</div>
+                                        <div class="stat-label">Approved</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5>Drive Summary</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div v-if="companyOverview.drive_stats" class="row">
+                                            <div v-for="stat in companyOverview.drive_stats" class="col-md-6 mb-3">
+                                                <div class="card">
+                                                    <div class="card-body">
+                                                        <h6>[[ stat.job_title ]]</h6>
+                                                        <p>Applications: [[ stat.total_applications ]] | Shortlisted: [[ stat.shortlisted ]]</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'my-drives'">
+                        <div class="d-flex justify-content-between mb-3">
+                            <h3><i class="bi bi-briefcase"></i> My Drives</h3>
+                            <button class="btn btn-primary" @click="showCreateDrive = true">+ New Drive</button>
+                        </div>
+                        <div v-if="companyDrives.length" class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Status</th>
+                                        <th>Applications</th>
+                                        <th>Deadline</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="drive in companyDrives" :key="drive.id">
+                                        <td>[[ drive.job_title ]]</td>
+                                        <td><span class="badge" :class="getStatusClass(drive.status)">[[ drive.status ]]</span></td>
+                                        <td>[[ drive.application_count || 0 ]]</td>
+                                        <td>[[ new Date(drive.application_deadline).toLocaleDateString() ]]</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="no-data">
+                            <i class="bi bi-briefcase fs-1"></i>
+                            <h5>No Drives Yet</h5>
+                            <p>Create your first drive to get started</p>
+                        </div>
+
+                        <!-- Create Drive Modal -->
+                        <div v-if="showCreateDrive" class="modal d-block" style="background: rgba(0,0,0,0.5);">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Create New Drive</h5>
+                                        <button type="button" class="btn-close" @click="showCreateDrive = false"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form @submit.prevent="submitCreateDrive">
+                                            <div class="mb-3">
+                                                <label class="form-label">Job Title *</label>
+                                                <input type="text" class="form-control" v-model="newDrive.job_title" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Job Description *</label>
+                                                <textarea class="form-control" v-model="newDrive.job_description" required></textarea>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Eligibility Branch *</label>
+                                                        <input type="text" class="form-control" v-model="newDrive.eligibility_branch" required>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Min CGPA *</label>
+                                                        <input type="number" class="form-control" v-model="newDrive.eligibility_cgpa" step="0.01" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Eligibility Year *</label>
+                                                        <input type="text" class="form-control" v-model="newDrive.eligibility_year" placeholder="e.g., 2026, 2027" required>
+                                                        <div class="form-text">Enter graduation years for eligible students.</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Application Deadline *</label>
+                                                        <input type="datetime-local" class="form-control" v-model="newDrive.application_deadline" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Job Type</label>
+                                                        <select class="form-control" v-model="newDrive.job_type">
+                                                            <option>Full-time</option>
+                                                            <option>Internship</option>
+                                                            <option>Part-time</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Salary Package</label>
+                                                        <input type="text" class="form-control" v-model="newDrive.salary_package" placeholder="e.g., 8-10 LPA">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Job Location</label>
+                                                <input type="text" class="form-control" v-model="newDrive.job_location">
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" @click="showCreateDrive = false">Cancel</button>
+                                        <button type="button" class="btn btn-primary" @click="submitCreateDrive">Create Drive</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'applications'">
+                        <h3><i class="bi bi-file-earmark-text"></i> Student Applications</h3>
+                        <div v-if="companyApplications.length" class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Student Name</th>
+                                        <th>Roll Number</th>
+                                        <th>Drive Title</th>
+                                        <th>Status</th>
+                                        <th>Application Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="app in companyApplications" :key="app.id">
+                                        <td>[[ app.student_name ]]</td>
+                                        <td><code>[[ app.roll_number ]]</code></td>
+                                        <td>[[ app.drive_title ]]</td>
+                                        <td>
+                                            <span class="badge" :class="getStatusClass(app.status)">[[ app.status ]]</span>
+                                        </td>
+                                        <td>[[ new Date(app.application_date).toLocaleDateString() ]]</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button v-if="app.status === 'applied'" class="btn btn-outline-success" @click="updateApplicationStatus(app.id, 'shortlisted')" title="Shortlist">
+                                                    <i class="bi bi-star"></i>
+                                                </button>
+                                                <button v-if="app.status === 'shortlisted'" class="btn btn-outline-primary" @click="updateApplicationStatus(app.id, 'selected')" title="Select">
+                                                    <i class="bi bi-check-circle"></i>
+                                                </button>
+                                                <button v-if="app.status !== 'rejected'" class="btn btn-outline-danger" @click="updateApplicationStatus(app.id, 'rejected')" title="Reject">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                                <button class="btn btn-outline-info" @click="scheduleInterview(app.id)" title="Schedule Interview">
+                                                    <i class="bi bi-calendar-event"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div v-else class="no-data">
+                            <i class="bi bi-file-earmark-text fs-1"></i>
+                            <h5>No Applications Yet</h5>
+                            <p>Students will appear here once they apply to your drives.</p>
+                        </div>
+                    </div>
+
+                    <div v-show="currentView === 'profile'">
+                        <h3><i class="bi bi-building"></i> Company Profile</h3>
+                        <div v-if="currentCompany" class="card">
+                            <div class="card-body">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Company Name</label>
+                                        <input type="text" class="form-control" v-model="currentCompany.company_name" disabled>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Industry</label>
+                                        <input type="text" class="form-control" v-model="currentCompany.industry" disabled>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">HR Name</label>
+                                        <input type="text" class="form-control" v-model="currentCompany.hr_name" disabled>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">HR Contact</label>
+                                        <input type="text" class="form-control" v-model="currentCompany.hr_contact" disabled>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Website</label>
+                                    <input type="text" class="form-control" v-model="currentCompany.website" disabled>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Location</label>
+                                    <input type="text" class="form-control" v-model="currentCompany.location" disabled>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-control" v-model="currentCompany.description" disabled></textarea>
+                                </div>
+                                <p v-if="currentCompany.approval_status" class="mt-3">
+                                    <strong>Status: </strong>
+                                    <span class="badge" :class="'bg-' + (currentCompany.approval_status === 'approved' ? 'success' : 'warning')">
+                                        [[ currentCompany.approval_status ]]
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const { createApp, ref, computed, onMounted, watch } = Vue;
+
+createApp({
+    compilerOptions: { delimiters: ['[[', ']]'] },
+    setup() {
+        // Core state
+        const userRole = ref('');
+        const currentView = ref('overview');
+        const loading = ref(false);
+        const errorMessage = ref('');
+        const successMessage = ref('');
+
+        // Helper functions
+        const getAuthToken = () => localStorage.getItem('access_token') || sessionStorage.getItem('token');
+
+        // Role-specific data
+        const overviewStats = ref({});
+        const studentStats = ref({});
+        const companyOverview = ref({});
+        const companyApplications = ref([]);
+        const currentCompany = ref({});
+        const studentDrives = ref([]);
+        const companyDrives = ref([]);
+        const studentApplications = ref([]);
+        const currentStudent = ref({});
+        const editMode = ref(false);
+        const editedStudent = ref({});
+        const searchTerm = ref('');
+        const showCreateDrive = ref(false);
+        // Admin-specific data
+        const companies = ref([]);
+        const adminDrives = ref([]);
+        const students = ref([]);
+        const applications = ref([]);
+        const reports = ref({});
+        const newDrive = ref({
+            job_title: '',
+            job_description: '',
+            eligibility_branch: '',
+            eligibility_cgpa: '',
+            eligibility_year: '',
+            application_deadline: '',
+            job_type: 'Full-time',
+            salary_package: '',
+            job_location: ''
+        });
+
+        // Computed
+        // ✅ FIXED: Removed undefined apiBase variable
+        // Axios already configured with baseURL = '/api' in main.js
+        // All endpoints should NOT include '/api' prefix
+
+        // API helper - endpoints should be like '/auth/me' not '/api/auth/me'
+        const apiCall = async (endpoint, method = 'GET', data = null) => {
+            const token = getAuthToken();
+            if (!token) {
+                errorMessage.value = 'Please log in to access dashboard';
+                window.location.href = '/login?redirect=/dashboard';
+                return null;
+            }
+
+            try {
+                loading.value = true;
+                errorMessage.value = '';
+                const config = {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                };
+                let response;
+        // ✅ FIXED: Removed manual '/api' prefix - axios.defaults.baseURL already set to '/api'
+        const url = endpoint;
+                if (method === 'GET') {
+                    response = await axios.get(url, config);
+                } else {
+                    response = await axios[method.toLowerCase()](url, data, config);
+                }
+                return response.data;
+            } catch (err) {
+                if (err.response?.status === 401) {
+                    errorMessage.value = 'Session expired. Please log in again.';
+                    localStorage.removeItem('access_token');
+                    setTimeout(() => window.location.href = '/login', 2000);
+                } else {
+                    errorMessage.value = err.response?.data?.error || `Request failed: ${err.message}`;
+                }
+                console.error('API Error:', err);
+                return null;
+            } finally {
+                loading.value = false;
+            }
+        };
+
+        // Load current user and role
+        const loadUserRole = async () => {
+            const user = await apiCall('/auth/me');
+            if (user) {
+                userRole.value = user.role;
+                if (userRole.value === 'student' && user.student) {
+                    currentStudent.value = user.student;
+                }
+            }
+        };
+
+        // ADMIN functions (existing)
+        const loadOverview = async () => overviewStats.value = await apiCall('/admin/dashboard') || {};
+        const loadCompanies = async () => companies.value = await apiCall('/admin/companies') || [];
+        const loadDrives = async () => adminDrives.value = await apiCall('/admin/drives') || [];
+        const loadStudents = async () => students.value = await apiCall('/admin/students') || [];
+        const loadApplications = async () => applications.value = await apiCall('/admin/applications') || [];
+        const loadReports = async () => reports.value = await apiCall('/admin/reports/statistics') || {};
+
+        // Admin action functions
+        const approveCompany = async (companyId) => {
+            const result = await apiCall(`/admin/companies/${companyId}/approve`, 'POST');
+            if (result) {
+                loadCompanies();
+                errorMessage.value = 'Company approved successfully!';
+            }
+        };
+
+        const rejectCompany = async (companyId) => {
+            const result = await apiCall(`/admin/companies/${companyId}/reject`, 'POST');
+            if (result) {
+                loadCompanies();
+                errorMessage.value = 'Company rejected!';
+            }
+        };
+
+        const approveDrive = async (driveId) => {
+            const result = await apiCall(`/admin/drives/${driveId}/approve`, 'POST');
+            if (result) {
+                loadDrives();
+                errorMessage.value = 'Drive approved successfully!';
+            }
+        };
+
+        const rejectDrive = async (driveId) => {
+            const result = await apiCall(`/admin/drives/${driveId}/reject`, 'POST');
+            if (result) {
+                loadDrives();
+                errorMessage.value = 'Drive rejected!';
+            }
+        };
+
+        const blacklistStudent = async (studentId) => {
+            const result = await apiCall(`/admin/students/${studentId}/blacklist`, 'POST');
+            if (result) {
+                loadStudents();
+                errorMessage.value = 'Student blacklisted!';
+            }
+        };
+
+        // STUDENT functions
+        const loadStudentOverview = async () => studentStats.value = await apiCall('/student/dashboard') || {};
+        const loadStudentDrives = async () => studentDrives.value = await apiCall('/student/drives') || [];
+        const loadStudentApplications = async () => studentApplications.value = await apiCall('/student/applications') || [];
+        const loadStudentProfile = async () => currentStudent.value = (await apiCall('/student/profile')) || {};
+
+        const saveProfile = async () => {
+            const result = await apiCall('/student/profile', 'PUT', editedStudent.value);
+            if (result) {
+                currentStudent.value = result.student;
+                editMode.value = false;
+                errorMessage.value = 'Profile updated successfully!';
+            }
+        };
+
+        const exportApplicationsToCSV = () => {
+            if (!studentApplications.value.length) return;
+
+            // CSV headers
+            const headers = ['Drive Title', 'Company Name', 'Status', 'Application Date'];
+            
+            // CSV rows
+            const rows = studentApplications.value.map(app => [
+                app.drive_title,
+                app.company_name,
+                app.status,
+                new Date(app.application_date).toLocaleDateString()
+            ]);
+
+            // Combine headers and rows
+            const csvContent = [headers, ...rows]
+                .map(row => row.map(field => `"${field}"`).join(','))
+                .join('\n');
+
+            // Create and download file
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'my_applications.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        const isExporting = ref(false);
+
+        const exportApplicationsViaCelery = async () => {
+            try {
+                isExporting.value = true;
+                const response = await axios.post('/student/export-csv', {}, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                if (response.status === 202) {
+                    successMessage.value = '✓ Export initiated! You will receive an email with your applications shortly.';
+                    setTimeout(() => {
+                        successMessage.value = '';
+                    }, 4000);
+                }
+            } catch (error) {
+                console.error('Export error:', error.response?.data || error.message);
+                const errorDetails = error.response?.data?.details || error.response?.data?.error || 'Failed to initiate export. Please try again.';
+                errorMessage.value = `❌ ${errorDetails}`;
+            } finally {
+                isExporting.value = false;
+            }
+        };
+
+        const applyForDrive = async (driveId) => {
+            const result = await apiCall(`/student/drives/${driveId}/apply`, 'POST');
+            if (result) {
+                loadStudentDrives();
+                errorMessage.value = 'Application submitted successfully!';
+            }
+        };
+
+        const submitCreateDrive = async () => {
+            try {
+                // Validate required fields
+                if (!newDrive.value.job_title || !newDrive.value.job_description || 
+                    !newDrive.value.eligibility_branch || !newDrive.value.eligibility_cgpa || 
+                    !newDrive.value.eligibility_year || !newDrive.value.application_deadline) {
+                    errorMessage.value = 'Please fill all required fields';
+                    return;
+                }
+
+                const result = await apiCall('/company/drives', 'POST', newDrive.value);
+                if (result) {
+                    errorMessage.value = 'Drive created successfully! Awaiting admin approval.';
+                    showCreateDrive.value = false;
+                    // Reset form
+                    newDrive.value = {
+                        job_title: '',
+                        job_description: '',
+                        eligibility_branch: '',
+                        eligibility_cgpa: '',
+                        eligibility_year: '',
+                        application_deadline: '',
+                        job_type: 'Full-time',
+                        salary_package: '',
+                        job_location: ''
+                    };
+                    loadCompanyDrives();
+                }
+            } catch (error) {
+                errorMessage.value = 'Failed to create drive: ' + error.message;
+            }
+        };
+
+        // COMPANY functions
+        const loadCompanyOverview = async () => companyOverview.value = await apiCall('/company/dashboard') || {};
+        const loadCompanyDrives = async () => companyDrives.value = await apiCall('/company/drives') || [];
+        const loadCompanyApplications = async () => {
+            // Load all applications for the company
+            const apps = await apiCall('/company/applications');
+            companyApplications.value = apps || [];
+        };
+        const loadCompanyProfile = async () => currentCompany.value = await apiCall('/company/profile') || {};
+
+        // Application management functions
+        const updateApplicationStatus = async (applicationId, newStatus) => {
+            // Map status names to action names
+            const actionMap = {
+                'shortlisted': 'shortlist',
+                'selected': 'select',
+                'rejected': 'reject'
+            };
+            const action = actionMap[newStatus] || newStatus;
+            
+            const result = await apiCall(`/company/applications/${applicationId}/${action}`, 'POST');
+            if (result) {
+                errorMessage.value = `Application ${newStatus} successfully!`;
+                await loadCompanyApplications(); // Refresh the list
+            }
+        };
+
+        const scheduleInterview = async (applicationId) => {
+            const interviewDate = prompt('Enter interview date (YYYY-MM-DD HH:MM):');
+            const interviewLocation = prompt('Enter interview location:');
+            
+            if (interviewDate && interviewLocation) {
+                const result = await apiCall(`/company/applications/${applicationId}/schedule`, 'POST', {
+                    interview_date: interviewDate,
+                    interview_location: interviewLocation
+                });
+                if (result) {
+                    errorMessage.value = 'Interview scheduled successfully!';
+                    await loadCompanyApplications(); // Refresh the list
+                }
+            }
+        };
+
+        // Load data based on view and role
+        const loadDataForView = async () => {
+            if (userRole.value === 'admin') {
+                switch (currentView.value) {
+                    case 'overview': await loadOverview(); break;
+                    case 'companies': await loadCompanies(); break;
+                    case 'drives': await loadDrives(); break;
+                    case 'students': await loadStudents(); break;
+                    case 'applications': await loadApplications(); break;
+                    case 'reports': await loadReports(); break;
+                }
+            } else if (userRole.value === 'student') {
+                switch (currentView.value) {
+                    case 'overview': await loadStudentOverview(); break;
+                    case 'drives': await loadStudentDrives(); break;
+                    case 'my-applications': await loadStudentApplications(); break;
+                    case 'profile': await loadStudentProfile(); break;
+                }
+            } else if (userRole.value === 'company') {
+                switch (currentView.value) {
+                    case 'overview': await loadCompanyOverview(); break;
+                    case 'my-drives': await loadCompanyDrives(); break;
+                    case 'applications': await loadCompanyApplications(); break;
+                    case 'profile': await loadCompanyProfile(); break;
+                }
+            }
+        };
+
+        // Status helpers
+        const getStatusClass = (status) => {
+            const classes = {
+                'applied': 'bg-info',
+                'shortlisted': 'bg-warning',
+                'selected': 'bg-success',
+                'rejected': 'bg-danger',
+                'pending': 'bg-secondary'
+            };
+            return classes[status] || 'bg-secondary';
+        };
+
+        // Mount
+        onMounted(async () => {
+            await loadUserRole();
+            await loadDataForView();
+        });
+
+        watch(currentView, loadDataForView);
+
+        return {
+            userRole,
+            currentView,
+            loading,
+            errorMessage,
+            successMessage,
+            overviewStats,
+            studentStats,
+            companyOverview,
+            companyApplications,
+            currentCompany,
+            studentDrives,
+            companyDrives,
+            studentApplications,
+            currentStudent,
+            editMode,
+            editedStudent,
+            showCreateDrive,
+            newDrive,
+            // Admin data
+            companies,
+            adminDrives,
+            students,
+            applications,
+            reports,
+            loadDataForView,
+            applyForDrive,
+            submitCreateDrive,
+            getStatusClass,
+            // Admin methods...
+            loadOverview,
+            loadCompanies,
+            loadDrives,
+            loadStudents,
+            loadApplications,
+            loadReports,
+            approveCompany,
+            rejectCompany,
+            approveDrive,
+            rejectDrive,
+            blacklistStudent,
+            loadStudentOverview,
+            loadStudentDrives,
+            loadStudentApplications,
+            loadStudentProfile,
+            saveProfile,
+            exportApplicationsToCSV,
+            exportApplicationsViaCelery,
+            isExporting,
+            loadCompanyOverview,
+            loadCompanyDrives,
+            loadCompanyApplications,
+            updateApplicationStatus,
+            scheduleInterview,
+            loadCompanyProfile
+        };
+    }
+}).mount('#app');
+</script>
+{% endblock %}
