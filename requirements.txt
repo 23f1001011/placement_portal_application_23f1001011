@@ -1,0 +1,23 @@
+# Flask and extensions
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-JWT-Extended==4.6.0
+Flask-Cors==4.0.0
+Flask-Bcrypt==1.0.1
+Werkzeug==3.0.1
+
+# Database - using newer version for Python 3.13 compatibility
+SQLAlchemy==2.0.35
+
+# Redis and Celery
+redis==5.0.1
+celery==5.3.4
+
+# Email
+Flask-Mail==0.10.0
+
+# Environment variables
+python-dotenv==1.0.0
+
+# Date handling
+python-dateutil==2.8.2
